@@ -5,7 +5,7 @@
 # ribbon
 
 > **A fork of [robonuggets/ribbon](https://github.com/robonuggets/ribbon)** by Jay E ([RoboNuggets](https://robonuggets.com)).
-> This fork adds the **current model** (e.g. `MODEL Opus 5.5`, in green) at the start of the band, updated on `/model` switches.
+> This fork adds the **current model and effort** (e.g. `MODEL Opus 5.5 · high`, in green) at the start of the band and the **context window fill** (e.g. `CTX 25% · 245k/1M`) at its end.
 > Everything else is the original; see upstream for its history.
 
 A free mod for Claude Code. It adds a slim band above your prompt that shows:
@@ -25,7 +25,7 @@ It installs once and is there in every session after that. No commands to learn.
   <img src="assets/slim-cold.png" alt="ribbon, one slim row: model Opus 5.5 at high effort, 7D 45% left, 5H 89% left, cache cold for 12h 45m, next message $4.78, context 60% of 1M" width="100%">
 </p>
 
-One row. That's the whole footprint.
+One row. That's the whole footprint: model and effort first, context fill last.
 
 ## Install
 
@@ -61,6 +61,17 @@ In a Claude Code terminal session, type:
 
 ## What you see
 
+### Model and effort *(fork)*
+
+- **MODEL** shows the model this session runs, in green: `Opus 5.5`, `Sonnet 4.5`, and `· 1M` on a 1M-context model.
+- Next to it is the **effort** the last request was sent with (`low`, `medium`, `high`, `xhigh`, `max`), also in green.
+- `/model` switches show at once. Effort fills in after your first reply, and a `/effort` change shows with your next request, because the band reads what was actually sent. On a model without an effort setting it stays hidden.
+
+### Context window *(fork)*
+
+- **CTX** at the end of the line shows how full the context window is: the percent in green, then tokens used out of the window, e.g. `CTX 25% · 245k/1M`.
+- It updates whenever the app measures the context, so it tracks the conversation as it grows and drops after `/compact` or `/clear`.
+
 ### Usage left
 
 - **7D** (orange) is your 7-day window. **5H** (yellow) is your 5-hour window.
@@ -83,12 +94,12 @@ The card shows how long you've been idle, how many tokens are in the cache, and 
 
 - **Wide:** everything on one row.
 - **Half width:** each window stacks into a small block.
-- **Narrow:** the cache moves to its own row.
+- **Narrow:** the cache moves to its own row, with the context fill at its end.
 - **Terminal:** the same facts as plain text.
 
 ## Good to know
 
-- **It costs nothing to run.** It reads the app's own numbers and draws them. It never calls a model.
+- **It costs nothing to run.** It reads the app's own numbers (usage, model, effort, context) and draws them. It never calls a model.
 - **Prices are estimates.** They come from a price table in `hooks/cache-art.ts` (`MODELS`), not from your bill. If prices change, edit that table.
 - **Subagents don't count.** Only your main chat resets the cache clock.
 
@@ -101,11 +112,11 @@ ribbon/
 │   └── marketplace.json    makes this repo installable
 ├── hooks/
 │   ├── hooks.json          points to the module
-│   ├── register.tsx        the band: usage, cache tracking, layout
+│   ├── register.tsx        the band: model, effort, usage, cache tracking, context, layout
 │   ├── cache-art.ts        the cache card and robot drawings, the price table
 │   └── font.ts             Outfit, embedded so the drawings render anywhere
 ├── types/index.d.ts        the shape of what the band remembers
-├── tests/                  7 tests: layouts, warm and cold, terminal, cleared sessions
+├── tests/                  11 tests: layouts, warm and cold, terminal, cleared sessions, model, effort, context
 └── assets/                 banner, screenshots, hex icon
 ```
 
@@ -129,6 +140,15 @@ Run the tests:
 claude plugin test ./ribbon
 ```
 
+An installed plugin runs from a copy Claude Code made at install time, so edits to your clone reach it only after a version bump. Raise `version` in `.claude-plugin/plugin.json`, then:
+
+```
+claude plugin marketplace update ribbon-fork
+claude plugin update ribbon@ribbon-fork
+```
+
+and restart Claude Code.
+
 ## Up close
 
 Click **Show** and the band opens into the cache card.
@@ -136,13 +156,13 @@ Click **Show** and the band opens into the cache card.
 **Warm.** The cache is live. Your next message is cheap.
 
 <p align="center">
-  <img src="assets/detail-warm.png" alt="Warm cache card: 6m idle, 245k tokens in cache, next message $0.05 on Opus" width="100%">
+  <img src="assets/detail-warm.png" alt="Warm cache card under the band (Opus 5.5 · high, CTX 25%): 6m idle, 245k tokens in cache, next message $0.05 on Opus" width="100%">
 </p>
 
 **Cold.** The hour has passed. Your next message re-sends the whole chat, so it costs more.
 
 <p align="center">
-  <img src="assets/detail-cold.png" alt="Cold cache card: 16h 8m idle, 243k tokens to re-cache, next message $1.94 on Opus" width="100%">
+  <img src="assets/detail-cold.png" alt="Cold cache card under the band (Opus 5.5 · high, CTX 24%): 16h 8m idle, 243k tokens to re-cache, next message $1.94 on Opus" width="100%">
 </p>
 
 ## License
@@ -152,6 +172,8 @@ Click **Show** and the band opens into the cache card.
 The embedded font is [Outfit](https://github.com/Outfitio/Outfit-Fonts), under the SIL Open Font License 1.1.
 
 Made by Jay E from RoboLabs. Learn more at [RoboNuggets](https://robonuggets.com).
+
+Model, effort and context additions in this fork by [excps](https://github.com/excps).
 
 <p align="center">
   <img src="assets/hex.svg" alt="RoboNuggets hex mark" width="48">
