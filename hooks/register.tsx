@@ -1,10 +1,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { CacheFacts, Fold, Window } from '../types'
+import type { CacheFacts, ContextFill, Fold, Window } from '../types'
 import {
   BG, EMPTY, HUE, INK, MUTED, ORANGE, ROBO_SIZE, TEXT, TTL_MIN, TTL_MS, WORD, YELLOW,
-  bandPx, cardSvg, chipSvg, costOf, familyOf, fmtIdle, kindOf, mineModel, roboSvg, usd,
+  bandPx, cardSvg, chipSvg, costOf, familyOf, fmtIdle, kindOf, mineModel, roboSvg, tok, usd,
 } from './cache-art'
 import type { CacheView } from './cache-art'
 
@@ -31,6 +31,11 @@ const cache = atom({ plugin: 'ribbon', key: 'cache' } as const, null as CacheFac
 const fold = atom({ plugin: 'ribbon', key: 'fold' } as const, null as Fold | null)
 /** The effort the main thread's last request carried, or null when none was sent. */
 const effort = atom({ plugin: 'ribbon', key: 'effort' } as const, null as string | null)
+/** The context window's fill as the engine last measured it. */
+const context = atom({ plugin: 'ribbon', key: 'context' } as const, null as ContextFill | null)
+
+const fill = (tokens: number | undefined, window: number | undefined): ContextFill | null =>
+  tokens && tokens > 0 && window && window > 0 ? { tokens, window } : null
 
 const NAMES: Record<string, string> = { seven_day: '7D', five_hour: '5H', spend_limit: 'SPEND' }
 const ORDER: Record<string, number> = { seven_day: 0, five_hour: 1 }
@@ -94,6 +99,7 @@ export const viewOf = (c: CacheFacts | null, now: number): CacheView | null => {
 const pull = async ($: EngineInterface): Promise<void> => {
   const u = await $.session.usage()
   await update($, windows, () => clean(u.rateLimits))
+  await update($, context, c => fill(u.context.tokens, u.context.window) ?? c)
 }
 
 /** Fresh context figures from the engine onto the cache facts, when it has them. */
@@ -118,6 +124,10 @@ export const register: Register = on => {
   on('session.measure', async ($, e, next) => {
     if (e.changed.includes('rateLimits')) {
       await update($, windows, () => clean(e.rateLimits))
+    }
+    if (e.changed.includes('context')) {
+      const f = fill(e.context.tokens, e.context.window)
+      if (f) await update($, context, () => f)
     }
     if (e.changed.includes('context') && e.context.tokens && e.context.tokens > 0) {
       const tokens = e.context.tokens
@@ -191,7 +201,15 @@ export const register: Register = on => {
         <Text color={MUTED} bold>MODEL </Text>
         <Text color={MODEL_GREEN} bold>{modelName}</Text>
         {level ? <Text color={MUTED}> · </Text> : null}
-        {level ? <Text color={TEXT} bold>{level}</Text> : null}
+        {level ? <Text color={MODEL_GREEN} bold>{level}</Text> : null}
+      </Box>
+    ) : null
+    const ctx = await read($, context)
+    const ctxChip = ctx ? (
+      <Box key="ctx" flexDirection="row" flexShrink={0} marginRight={3}>
+        <Text color={MUTED} bold>CTX </Text>
+        <Text color={MODEL_GREEN} bold>{`${Math.min(100, Math.round((ctx.tokens / ctx.window) * 100))}%`}</Text>
+        <Text color={MUTED}>{` · ${tok(ctx.tokens)}/${tok(ctx.window)}`}</Text>
       </Box>
     ) : null
 
@@ -200,6 +218,7 @@ export const register: Register = on => {
         <Box flexDirection="row" backgroundColor={BG} paddingX={1}>
           {modelChip}
           <Text color={MUTED}>USAGE · waiting for the first reply</Text>
+          {ctxChip ? <Box marginLeft={3}>{ctxChip}</Box> : null}
         </Box>
       )
     }
@@ -270,6 +289,7 @@ export const register: Register = on => {
           {modelChip}
           {label}
           {usage}
+          {ctxChip}
         </Box>
       )
     }
@@ -323,6 +343,7 @@ export const register: Register = on => {
               {summary}
             </Box>
           )}
+          {ctxChip}
           {grow}
           {button}
         </Box>
@@ -346,6 +367,7 @@ export const register: Register = on => {
               ) : null}
             </Box>
           )}
+          {ctxChip}
           {grow}
           {button}
         </Box>
@@ -361,6 +383,7 @@ export const register: Register = on => {
         <Box key="cache" flexDirection="row" paddingX={1} alignItems="center">
           {badge}
           {summary}
+          {ctxChip}
           {grow}
           {button}
         </Box>,
