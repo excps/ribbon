@@ -23,6 +23,8 @@ const LOW_AT = 15
 const TIGHT_CELLS = 6
 /** How often the band redraws, so the countdown and the warm-to-cold flip stay current. */
 const TICK_MS = 30_000
+/** The model name's colour: a soft green that sits with the band's warm palette. */
+const MODEL_GREEN = '#8fbf6a'
 
 const windows = atom({ plugin: 'ribbon', key: 'windows' } as const, [] as Window[])
 const cache = atom({ plugin: 'ribbon', key: 'cache' } as const, null as CacheFacts | null)
@@ -40,6 +42,25 @@ const clean = (list: readonly Window[]): Window[] =>
 const dots = (left: number, cells: number): { on: string; off: string } => {
   const n = Math.max(0, Math.min(cells, Math.round((left / 100) * cells)))
   return { on: '●'.repeat(n), off: '·'.repeat(cells - n) }
+}
+
+/** A model id the way the band writes it: claude-opus-5-5[1m] → Opus 5.5 · 1M. */
+export const fmtModel = (id: string | null | undefined): string | null => {
+  if (!id) return null
+  const ctx = /\[(\w+)\]$/.exec(id)?.[1]
+  const base = id.replace(/\[\w+\]$/, '').replace(/^(us\.|eu\.|global\.)?(anthropic\.)?claude-/, '')
+  const m = /^([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?(?:-v\d.*)?$/.exec(base)
+  const [, fam = '', major = '', minor] = m ?? []
+  const name = m ? `${fam.charAt(0).toUpperCase()}${fam.slice(1)} ${major}${minor ? '.' + minor : ''}` : base
+  return ctx ? `${name} · ${ctx.toUpperCase()}` : name
+}
+
+const currentModel = async ($: EngineInterface): Promise<string | null> => {
+  try {
+    return fmtModel(await $.session.model())
+  } catch {
+    return null
+  }
 }
 
 const fmtReset = (iso: string | undefined, now: number): string => {
@@ -103,6 +124,13 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // A /model switch redraws the band at once instead of on the next tick.
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    const r = await next(e)
+    $.ui.invalidate('ui.render')
+    return r
+  }).catch(($, e, next) => next(e))
+
   // A resumed or forked session knows how long it was away and how big it is.
   on('classic.SessionStart', async ($, e, next) => {
     const r = await next(e)
@@ -151,10 +179,18 @@ export const register: Register = on => {
     const list = await read($, windows)
     const now = await $.clock.now()
     const view = viewOf(await read($, cache), now)
+    const modelName = await currentModel($)
+    const modelChip = modelName ? (
+      <Box key="model" flexDirection="row" flexShrink={0} marginRight={3}>
+        <Text color={MUTED} bold>MODEL </Text>
+        <Text color={MODEL_GREEN} bold>{modelName}</Text>
+      </Box>
+    ) : null
 
     if (list.length === 0 && !view) {
       return (
-        <Box backgroundColor={BG} paddingX={1}>
+        <Box flexDirection="row" backgroundColor={BG} paddingX={1}>
+          {modelChip}
           <Text color={MUTED}>USAGE · waiting for the first reply</Text>
         </Box>
       )
@@ -223,6 +259,7 @@ export const register: Register = on => {
     if (!view) {
       return (
         <Box flexDirection="row" backgroundColor={BG} paddingX={1}>
+          {modelChip}
           {label}
           {usage}
         </Box>
@@ -269,6 +306,7 @@ export const register: Register = on => {
     if (kind === 'wide') {
       rows = (
         <Box key="row" flexDirection="row" paddingX={1} alignItems="center">
+          {modelChip}
           {label}
           {usage}
           {open ? null : (
@@ -285,6 +323,7 @@ export const register: Register = on => {
       // The cache becomes a third stacked block, the same shape as 7D and 5H.
       rows = (
         <Box key="row" flexDirection="row" paddingX={1}>
+          {modelChip}
           {label}
           {usage}
           {open ? null : (
@@ -307,6 +346,7 @@ export const register: Register = on => {
       // Narrow: the cache gets its own row under the usage blocks.
       rows = [
         <Box key="row" flexDirection="row" paddingX={1}>
+          {modelChip}
           {label}
           {usage}
         </Box>,
