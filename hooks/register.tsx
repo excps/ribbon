@@ -29,6 +29,8 @@ const MODEL_GREEN = '#8fbf6a'
 const windows = atom({ plugin: 'ribbon', key: 'windows' } as const, [] as Window[])
 const cache = atom({ plugin: 'ribbon', key: 'cache' } as const, null as CacheFacts | null)
 const fold = atom({ plugin: 'ribbon', key: 'fold' } as const, null as Fold | null)
+/** The effort the main thread's last request carried, or null when none was sent. */
+const effort = atom({ plugin: 'ribbon', key: 'effort' } as const, null as string | null)
 
 const NAMES: Record<string, string> = { seven_day: '7D', five_hour: '5H', spend_limit: 'SPEND' }
 const ORDER: Record<string, number> = { seven_day: 0, five_hour: 1 }
@@ -137,6 +139,7 @@ export const register: Register = on => {
     if (e.source === 'clear' || e.source === 'compact') {
       await update($, cache, () => null)
       await update($, fold, () => null)
+      await update($, effort, () => null)
     } else if ((e.source === 'resume' || e.source === 'fork') && typeof e.seconds_since_last_response === 'number') {
       const now = await $.clock.now()
       const lastAt = now - e.seconds_since_last_response * 1000
@@ -151,6 +154,8 @@ export const register: Register = on => {
   // Each main-thread request reads or writes the cache, so its start resets the hour.
   on('turn.step', async function* ($, e, next) {
     if (!e.agentId) {
+      const level = e.effort === undefined ? null : String(e.effort)
+      if (level !== (await read($, effort))) await update($, effort, () => level)
       const now = await $.clock.now()
       await update($, cache, c => ({ lastAt: now, tokens: c?.tokens ?? 0, window: c?.window ?? 0, model: c?.model ?? null }))
     }
@@ -180,10 +185,13 @@ export const register: Register = on => {
     const now = await $.clock.now()
     const view = viewOf(await read($, cache), now)
     const modelName = await currentModel($)
+    const level = await read($, effort)
     const modelChip = modelName ? (
       <Box key="model" flexDirection="row" flexShrink={0} marginRight={3}>
         <Text color={MUTED} bold>MODEL </Text>
         <Text color={MODEL_GREEN} bold>{modelName}</Text>
+        {level ? <Text color={MUTED}> · </Text> : null}
+        {level ? <Text color={TEXT} bold>{level}</Text> : null}
       </Box>
     ) : null
 

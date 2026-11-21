@@ -24,6 +24,29 @@ test('the band shows the current model', async ($, on) => {
       props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 4, bodyColumns: 100, scroll: { offset: 0, bodyRows: 4 }, view: {} },
     })
     expect(await band.find({ text: 'Opus 5.5' })).toBeDefined()
+    expect(await band.find({ text: 'high' })).toBeUndefined()
     await band.unmount()
   }
+})
+
+test('the band shows the effort of the last request next to the model', async ($, on) => {
+  mock.store(on)
+  mock.clock(on, { now: Date.parse('2098-12-31T22:00:00Z') })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.model', () => ({ value: 'claude-opus-5-5' }))
+  on('session.usage', () => ({
+    value: { startedAt: 0, context: { window: 200000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 10 }] },
+  }))
+  on('turn.step', async function* ($, e) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: null, usage: null } as never
+  })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  const step = $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', effort: 'xhigh', messageCount: 1 } as never) as unknown as AsyncIterable<unknown>
+  for await (const _ of step) void _
+  const band = await $.ui.mount({
+    plugin: 'ribbon', surface: 'terminal', component: 'AbovePrompt',
+    props: { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 4, bodyColumns: 100, scroll: { offset: 0, bodyRows: 4 }, view: {} },
+  })
+  expect(await band.find({ text: 'xhigh' })).toBeDefined()
+  await band.unmount()
 })

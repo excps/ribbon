@@ -10,7 +10,7 @@
 
 A free mod for Claude Code. It adds a slim band above your prompt that shows:
 
-- **Which model you are on**, e.g. Opus 5.5 (with `· 1M` on a 1M-context model). *(added in this fork)*
+- **Which model you are on and its effort**, e.g. Opus 5.5 · high (with `· 1M` on a 1M-context model; effort fills in after the first request). *(added in this fork)*
 - **How much usage you have left** in your 7-day and 5-hour windows, and when each one resets.
 - **Whether your prompt cache is warm or cold**, and what your next message will cost.
 
