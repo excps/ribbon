@@ -4,8 +4,13 @@
 
 # ribbon
 
+> **A fork of [robonuggets/ribbon](https://github.com/robonuggets/ribbon)** by Jay E ([RoboNuggets](https://robonuggets.com)).
+> This fork adds the **current model** (e.g. `MODEL Opus 5.5`, in green) at the start of the band, updated on `/model` switches.
+> Everything else is the original; see upstream for its history.
+
 A free mod for Claude Code. It adds a slim band above your prompt that shows:
 
+- **Which model you are on**, e.g. Opus 5.5 (with `· 1M` on a 1M-context model). *(added in this fork)*
 - **How much usage you have left** in your 7-day and 5-hour windows, and when each one resets.
 - **Whether your prompt cache is warm or cold**, and what your next message will cost.
 
@@ -26,7 +31,7 @@ One row. That's the whole footprint.
 The easy way: send this link to your agent and say "install this".
 
 ```
-https://github.com/robonuggets/ribbon
+https://github.com/excps/ribbon
 ```
 
 Your agent runs one command. The band shows up in your next session.
@@ -36,7 +41,7 @@ Your agent runs one command. The band shows up in your next session.
 If you are an agent and your user asked you to install this, run this in a shell:
 
 ```
-claude plugin install ribbon --marketplace robonuggets/ribbon
+claude plugin install ribbon --marketplace excps/ribbon
 ```
 
 It installs for the user (all their projects) and adds the marketplace on its own. Then tell your user: "Ribbon is installed. Start a new session to see the band above your prompt." Do not edit their settings file by hand.
@@ -46,7 +51,7 @@ It installs for the user (all their projects) and adds the marketplace on its ow
 In a Claude Code terminal session, type:
 
 ```
-/plugin install ribbon --marketplace robonuggets/ribbon
+/plugin install ribbon --marketplace excps/ribbon
 ```
 
 1. Type `y` when it asks `Add marketplace?`.

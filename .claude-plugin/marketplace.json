@@ -1,6 +1,7 @@
 {
   "name": "ribbon-fork",
-  "owner": { "name": "Jay E", "url": "https://robonuggets.com" },
+  "owner": { "name": "excps", "url": "https://github.com/excps" },
+  "description": "excps fork of robonuggets/ribbon: the ribbon band plus the current model.",
   "plugins": [
     {
       "name": "ribbon",
